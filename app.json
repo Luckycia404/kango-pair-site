@@ -1,0 +1,7 @@
+{
+  "description": "Kango Pair WhatsApp pairing and QR website",
+  "keywords": ["nodejs", "express", "whatsapp", "pairing"],
+  "buildpacks": [
+    { "url": "heroku/nodejs" }
+  ]
+}
