@@ -1,0 +1,111 @@
+<!doctype html>
+<html lang="en"><head>
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><meta name="theme-color" content="#09090b">
+  <meta name="description" content="Link your WhatsApp device to Kango with a QR code."><title>Link with QR Code — KANGO PAIR</title><link rel="stylesheet" href="/site.css">
+</head><body class="dialog-page">
+  <a class="skip-link" href="#main">Skip to content</a>
+  <main id="main" class="dialog-main"><section class="pair-dialog" aria-labelledby="dialog-heading">
+    <div class="dialog-titlebar"><p id="dialog-heading">Link with QR Code</p><a class="dialog-close" href="/pair" aria-label="Back to pairing options"><span aria-hidden="true">←</span></a></div>
+    <div class="dialog-content qr-content"><h1 id="qr-title">Scan to link your device</h1><p class="dialog-lead">Generate a one-time QR code, then scan it from WhatsApp on your phone.</p>
+      <div class="session-prefix-control">
+        <p class="field-label" id="session-prefix-label">Choose bot</p>
+        <div class="session-prefix-options" role="group" aria-labelledby="session-prefix-label">
+          <button class="session-prefix-option" type="button" data-session-prefix="Riam" aria-pressed="false">Riam</button>
+          <button class="session-prefix-option" type="button" data-session-prefix="Kango" aria-pressed="true">Kango</button>
+        </div>
+        <p class="session-prefix-help">The selected name will start the session ID sent to WhatsApp.</p>
+      </div>
+      <div id="qr-stage" class="qr-stage" hidden><div id="qr-loading" class="qr-loading"><span class="spinner" aria-hidden="true"></span><span>Preparing your QR code…</span></div><img id="qr-image" class="qr-image" alt="WhatsApp device-linking QR code" hidden></div>
+      <p id="qr-status" class="status" role="status" aria-live="polite"></p><button id="generate-qr" class="button button-primary submit-button" type="button"><span id="qr-button-label">Generate QR Code</span></button>
+      <div class="steps-divider"><span>How it works</span></div><ol class="instruction-list"><li><span class="instruction-number">1</span><span>Open WhatsApp and go to Settings.</span></li><li><span class="instruction-number">2</span><span>Tap Linked Devices, then Link a Device.</span></li><li><span class="instruction-number">3</span><span>Scan the QR code shown here.</span></li></ol>
+      <p class="form-note"><span class="note-mark" aria-hidden="true">i</span><span>Keep the QR code and any session details private.</span></p>
+    </div>
+  </section></main>
+  <script>
+    (() => {
+      const storageKey = 'pairing-session-prefix';
+      const buttons = Array.from(document.querySelectorAll('[data-session-prefix]'));
+      let selectedPrefix = 'Kango';
+
+      try {
+        const savedPrefix = window.localStorage.getItem(storageKey);
+        if (savedPrefix === 'Riam' || savedPrefix === 'Kango') selectedPrefix = savedPrefix;
+      } catch {}
+
+      function renderSelection() {
+        buttons.forEach((button) => {
+          const selected = button.dataset.sessionPrefix === selectedPrefix;
+          button.setAttribute('aria-pressed', String(selected));
+        });
+      }
+
+      buttons.forEach((button) => button.addEventListener('click', () => {
+        const prefix = button.dataset.sessionPrefix;
+        if (prefix !== 'Riam' && prefix !== 'Kango') return;
+        selectedPrefix = prefix;
+        try {
+          window.localStorage.setItem(storageKey, selectedPrefix);
+        } catch {}
+        renderSelection();
+      }));
+
+      window.getPairingSessionPrefix = () => selectedPrefix;
+      renderSelection();
+    })();
+  </script>
+  <script>
+    const generateButton = document.getElementById('generate-qr');
+    const buttonLabel = document.getElementById('qr-button-label');
+    const statusElement = document.getElementById('qr-status');
+    const stage = document.getElementById('qr-stage');
+    const loading = document.getElementById('qr-loading');
+    const image = document.getElementById('qr-image');
+    let timeoutId;
+
+    function setStatus(message, type) {
+      statusElement.textContent = message;
+      statusElement.className = type ? `status ${type}` : 'status';
+    }
+
+    generateButton.addEventListener('click', () => {
+      window.clearTimeout(timeoutId);
+      generateButton.disabled = true;
+      buttonLabel.textContent = 'Preparing QR code…';
+      stage.hidden = false;
+      image.hidden = true;
+      loading.hidden = false;
+      setStatus('Starting a WhatsApp pairing session…', 'loading');
+      const prefix = encodeURIComponent(window.getPairingSessionPrefix());
+      image.src = `/qr?request=${Date.now()}&prefix=${prefix}`;
+
+      timeoutId = window.setTimeout(() => {
+        if (!image.hidden) return;
+        image.removeAttribute('src');
+        loading.hidden = true;
+        stage.hidden = true;
+        generateButton.disabled = false;
+        buttonLabel.textContent = 'Try again';
+        setStatus('The QR code took too long to load. Please try again.', 'error');
+      }, 45000);
+    });
+
+    image.addEventListener('load', () => {
+      window.clearTimeout(timeoutId);
+      loading.hidden = true;
+      image.hidden = false;
+      generateButton.disabled = false;
+      buttonLabel.textContent = 'Generate a new code';
+      setStatus('Scan it in WhatsApp under Settings → Linked Devices. Keep your session details private.', 'success');
+    });
+
+    image.addEventListener('error', () => {
+      window.clearTimeout(timeoutId);
+      image.hidden = true;
+      loading.hidden = true;
+      stage.hidden = true;
+      generateButton.disabled = false;
+      buttonLabel.textContent = 'Try again';
+      setStatus('Could not load a QR code right now. Please try again.', 'error');
+    });
+  </script>
+</body></html>
